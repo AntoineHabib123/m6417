@@ -116,14 +116,15 @@ array[I, J, Q] of var 0..1: y_ijq;
 %========================================================
 %40 heures de travail granties pour employés reg
 constraint forall(i in IR, l in JL)(
-    sum(j in (l, l+6), q in Q)(
-        duree[q]*x_ijq[i,j,q]) >= 40.0
+    sum(j in l..(l+6), q in Q)(
+        duree[q] * x_ijq[i,j,q]
+    ) >= 40.0
 );
 
 %ne depasse pas le temp max par employé
-constraint for(i in I, l in JL)(
-    sum(j in (l,l+6), q in Q)(
-        duree[q]*x_ijq[i,j,q] <= T_max[i])
+constraint forall(i in I, l in JL)(
+    sum(j in l..(l+6), q in Q)(
+        duree[q]*x_ijq[i,j,q]) <= T_max[i]
 );
 
 %16h de repos sauf pour quarts de 12h
