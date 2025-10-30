@@ -121,6 +121,7 @@ constraint forall(i in IR, l in JL)(
     ) >= 40.0
 );
 
+
 %ne depasse pas le temp max par employé
 constraint forall(i in I, l in JL)(
     sum(j in l..(l+6), q in Q)(
@@ -167,7 +168,7 @@ constraint forall(i in I where not (i in IN))(
  
  %respecter les congés prévu
  constraint forall(i in IR)(
-    sum(j in Ci, q in Q)(x_ijq[i,j,q]) = 0
+    sum(j in Ci[i], q in Q)(x_ijq[i,j,q]) = 0
  );
  
 %contraintes ergonomiques
@@ -178,8 +179,6 @@ constraint forall(i in I where not (i in IN))(
  constraint forall(i in I where not(i in IE), j in 2..h-1)(
     sum(q in QN)(x_ijq[i,j-1,q]+x_ijq[i,j,q]+x_ijq[i,j+1,q]) <= 2
  );
- 
-
  
  %regrouper les congés isolés
  constraint forall(i in I where not(i in IE), j in J)(
