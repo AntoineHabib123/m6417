@@ -77,7 +77,7 @@ array[J, Q, J, Q, J, Q] of bool: T =
         | j in J, q in QUART, jp in J, qp in QUART, jpp in J, qpp in QUART ]);
 
 % Congés posés par les employés réguliers
-array[IR] of set of int: Ci;
+array[I, J] of 0..1: C_ij = array2d(I, J, [0 | i in I, j in J]);
 
 %========================================================
 %LES PARAMÈTRES: 
@@ -166,11 +166,12 @@ constraint forall(i in I where not (i in IN))(
     sum(j in J where not (j in JW), q in Q)(x_ijq[i,j,q]) = 0
  );
  
- %respecter les congés prévu
- constraint forall(i in IR)(
-    sum(j in Ci[i], q in Q)(x_ijq[i,j,q]) = 0
- );
+ % Contrainte des congés accordés
+constraint forall(i in IR)(
+    sum(j in J, q in Q)(C_ij[i,j] * x_ijq[i,j,q]) = 0
+);
  
+
 %contraintes ergonomiques
  constraint forall(i in I where not(i in IE), j in 2..h-1)(
     sum(q in QN)(x_ijq[i,j,q]) <= sum(q in QN)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q])
