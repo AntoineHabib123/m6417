@@ -2,17 +2,17 @@
 %LES ESSEMBLES: 
 %========================================================
 
-set of int: IR;  % Employés réguliers à temps plein
-set of int: IP;  % Employés occasionnels à temps plein  
-set of int: IE;  % Étudiants occasionnels à temps partiel
+set of int: IR = 1..11;  % Employés réguliers à temps plein
+set of int: IP = 1..13;  % Employés occasionnels à temps plein  
+set of int: IE = 1..62;  % Étudiants occasionnels à temps partiel
 set of int: I = IR union IP union IE;  % Ensemble de tous les employés
 
-set of int: IC;  % Employés disposés à être chefs d'équipes
-set of int: IN;  % Employés disposés à travailler la nuit
-set of int: IW;  % Employés disposés à travailler la fin de semaine
+set of int: IC = {1,2,3,4,5,6,7,8,9,10,11} ;  % Employés disposés à être chefs d'équipes
+set of int: IN = {11,12} union 13..17 union 25..87;  % Employés disposés à travailler la nuit
+set of int: IW = 25..87;  % Employés disposés à travailler la fin de semaine 
 
 % Ensemble des jours sur le planning d'horizon
-int: h;  % Horizon en jours
+int: h = 14;  % Horizon en jours
 set of int: J = 1..h;
 
 % Ensemble des lundis (j ≡ 1 mod 7)
@@ -23,7 +23,7 @@ set of int: JW = {j | j in J where j mod 7 == 0 \/ j mod 7 == 6};
 
 % Ensemble des quarts de travail
 enum QUART = {q0_8, q7_8, q8_8, q11_5_8, q12_8, q14_8, q16_8, q16_4};
-set of QUART: Q;
+set of QUART: Q = {q0_8, q7_8, q8_8, q12_8, q16_8, q16_4};
 
 % Heures de début pour chaque quart
 array[Q] of float: debut = 
@@ -39,13 +39,13 @@ array[Q] of float: duree =
 array[Q] of float: fin = [debut[q] + duree[q] | q in QUART];
 
 % Ensembles des quarts par type
-set of QUART: QN;  % Quarts de nuit
-set of QUART: QJ;  % Quarts de jour  
-set of QUART: QS;  % Quarts de soir
+set of Q: QN = {q0_8};  % Quarts de nuit
+set of QUART: QJ = {q7_8, q8_8, q11_5_8, q12_8, q14_8};  % Quarts de jour  
+set of QUART: QS = {q16_8, q16_4};  % Quarts de soir  % Quarts de soir
 
 % Paires de quarts qui démarrent à moins de 2 heures d'intervalle      
 
-array[Q] of set of QUART: quarts_2h = 
+array[Q] of set of Q: quarts_2h = 
     [ {p | p in QUART where abs(debut[q] - debut[p]) <= 2.0} | q in QUART ];
   
   % Paires de quarts séparés de moins de 16 heures  
@@ -83,17 +83,23 @@ array[I, J] of 0..1: C_ij = array2d(I, J, [0 | i in I, j in J]);
 %LES PARAMÈTRES: 
 %========================================================
 
-array[I] of float: T_max; %nombre d'heure maximum par employes
+array[I] of float: T_max = 
+    [40.0 | i in IR] ++  % Réguliers: 48h/semaine
+    [40.0 | i in IP] ++  % Occasionnels: 40h/semaine
+    [20.0 | i in IE];    % Étudiants: 20h/semaine
 
-int: k;% Tolérance absolue sur la différence d'effectifs entre quarts proches
+int: k = 2;% Tolérance absolue sur la différence d'effectifs entre quarts proches
 
-array[I] of int: c_barre;% Nombre idéal de quarts travaillés par personne (défini par groupe)
+array[I] of int: c_barre = 
+    [24 | i in IR] ++  % Réguliers: 24 quarts/mois
+    [20 | i in IP] ++  % Occasionnels: 20 quarts/mois
+    [10 | i in IE];    % Étudiants: 10 quarts/mois
+    
+array[I, J] of var 0..h: m_ij;   % Jours travaillés depuis le dernier jour de repos de l'employé i Initialisé à 0
 
-array[I] of int: m_i;% Jours travaillés depuis le dernier jour de repos de l'employé i
+array[I, J] of var 0..h: n_ij;% Jours travaillés la nuit quand non autorisé pour l'employé i
 
-array[I] of int: n_i;% Jours travaillés la nuit quand non autorisé pour l'employé i
-
-array[Q] of float: d_q;%JSP si nécessaire? Durée (en heures) du quart q ∈ QUARTS
+%array[Q] of float: d_q;%JSP si nécessaire? Durée (en heures) du quart q ∈ QUARTS
 
 array[J] of int: a_j; % Quarts non comblés par jour (6 pour la semaine, 8 pour le FDS)
 
@@ -101,7 +107,6 @@ array[J,Q] of int: r_jq; %nombres employes requis par quart par jours
 
 % Préférence de l'employé i pour le jour j et le quart q ∈ [1, 10]
 array[I, J, Q] of 1..10: p_ijq;  % Préférences ∈ [1,10]
-
 
 %========================================================
 %VARIABLE DE DESCISION: 
@@ -184,6 +189,45 @@ constraint forall(i in IR)(
  %regrouper les congés isolés
  constraint forall(i in I where not(i in IE), j in J)(
     sum(q in Q)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q] - 2*x_ijq[i,j,q]) <= 1 +sum(q in Q)(x_ijq[i,j,q]*y_ijq[i,j,q])
+);
+ 
+ 
+ %contraintes qui initializent et mettes à jour les parametres m_ij, n_ij
+ % Constraint to initialize m_i for day 1
+constraint forall(i in I)(
+    m_ij[i,1] = if sum(q in Q)(x_ijq[i,1,q]) > 0 then 1 else 0 endif
+);
+
+% Constraint to update m_i for subsequent days
+constraint forall(i in I, j in 2..h)(
+    m_ij[i,j] = if sum(q in Q)(x_ijq[i,j,q]) > 0 then 
+                   m_ij[i,j-1] + 1 
+                 else 
+                   0 
+                 endif
+);
+
+constraint forall(i in I, j in J)(
+    m_ij[i,j] <= 5
+);
+ 
+ % Initialize n_i for day 1
+constraint forall(i in I where not (i in IN))(
+    n_ij[i,1] = if sum(q in QN)(x_ijq[i,1,q]) > 0 then 1 else 0 endif
+);
+
+% Update n_i for subsequent days for unauthorized employees
+constraint forall(i in I where not (i in IN), j in 2..h)(
+    n_ij[i,j] = if sum(q in QN)(x_ijq[i,j,q]) > 0 then 
+                   n_ij[i,j-1] + 1 
+                 else 
+                   0 
+                 endif
+);
+
+% Constraint: unauthorized employees can't work more than 2 nights in a row
+constraint forall(i in I where not (i in IN), j in J)(
+    n_ij[i,j] <= 2
 );
  
 %========================================================
