@@ -1,18 +1,18 @@
 %========================================================
-%LES ESSEMBLES: 
+% ENSEMBLES
 %========================================================
 
-set of int: IR = 1..11;  % Employés réguliers à temps plein
-set of int: IP = 1..13;  % Employés occasionnels à temps plein  
-set of int: IE = 1..62;  % Étudiants occasionnels à temps partiel
+set of int: IR = 1..11;                % Employés réguliers à temps plein
+set of int: IP = 12..24;               % Employés occasionnels à temps plein  
+set of int: IE = 25..86;               % Étudiants occasionnels à temps partiel
 set of int: I = IR union IP union IE;  % Ensemble de tous les employés
 
-set of int: IC = {1,2,3,4,5,6,7,8,9,10,11} ;  % Employés disposés à être chefs d'équipes
-set of int: IN = {11,12} union 13..17 union 25..87;  % Employés disposés à travailler la nuit
-set of int: IW = 25..87;  % Employés disposés à travailler la fin de semaine 
+set of int: IC = IR;                                 % Employés disposés à être chefs d'équipes
+set of int: IN = 10..11 union 12..16 union 25..39;   % Employés disposés à travailler la nuit (2 réguliers, 5 occasionnels, 15 étudiants)
+set of int: IW = I;                                  % Employés disposés à travailler la fin de semaine 
 
 % Ensemble des jours sur le planning d'horizon
-int: h = 14;  % Horizon en jours
+int: h = 14;
 set of int: J = 1..h;
 
 % Ensemble des lundis (j ≡ 1 mod 7)
@@ -22,44 +22,43 @@ set of int: JL = {j | j in J where j mod 7 == 1};
 set of int: JW = {j | j in J where j mod 7 == 0 \/ j mod 7 == 6};
 
 % Ensemble des quarts de travail
-enum QUART = {q0_8, q7_8, q8_8, q11_5_8, q12_8, q14_8, q16_8, q16_4};
-set of QUART: Q = {q0_8, q7_8, q8_8, q12_8, q16_8, q16_4};
+enum Q = {q0_8, q7_8, q8_8, q11_5_8, q12_8, q14_8, q16_8, q16_4};
 
 % Heures de début pour chaque quart
-array[Q] of float: debut = 
-    [q0_8: 0.0, q7_8: 7.0, q8_8: 8.0, q11_5_8: 11.5, 
-     q12_8: 12.0, q14_8: 14.0, q16_8: 16.0, q16_4: 16.0];
+array[Q] of float: debut = [
+  0.0, 7.0, 8.0, 11.5, 12.0, 14.0, 16.0, 16.0
+];
      
 % Durées pour chaque quart (en heures)
-array[Q] of float: duree = 
-    [q0_8: 8.0, q7_8: 8.0, q8_8: 8.0, q11_5_8: 8.0, 
-     q12_8: 8.0, q14_8: 8.0, q16_8: 8.0, q16_4: 4.0];
+array[Q] of float: duree = [
+  8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 4.0
+];
 
 % Heures de fin pour chaque quart
-array[Q] of float: fin = [debut[q] + duree[q] | q in QUART];
+array[Q] of float: fin = [debut[q] + duree[q] | q in Q];
 
 % Ensembles des quarts par type
-set of Q: QN = {q0_8};  % Quarts de nuit
-set of QUART: QJ = {q7_8, q8_8, q11_5_8, q12_8, q14_8};  % Quarts de jour  
-set of QUART: QS = {q16_8, q16_4};  % Quarts de soir  % Quarts de soir
+set of Q: QN = {q0_8};                               % Quarts de nuit
+set of Q: QJ = {q7_8, q8_8, q11_5_8, q12_8, q14_8};  % Quarts de jour  
+set of Q: QS = {q16_8, q16_4};                       % Quarts de soir
 
 % Paires de quarts qui démarrent à moins de 2 heures d'intervalle      
 
 array[Q] of set of Q: quarts_2h = 
-    [ {p | p in QUART where abs(debut[q] - debut[p]) <= 2.0} | q in QUART ];
+    [ {p | p in Q where debut[p] - debut[q] <= 2.0} | q in Q ];
   
   % Paires de quarts séparés de moins de 16 heures  
 array[J, Q, J, Q] of bool: F = 
-    array4d(J, QUART, J, QUART, 
+    array4d(J, Q, J, Q, 
         [ debut[qp] + (jp - 1) * 24.0 < fin[q] + (j - 1) * 24.0 + 16.0
-        | j in J, q in QUART, jp in J, qp in QUART ]);
+        | j in J, q in Q, jp in J, qp in Q ]);
 
 % Paires de quarts consécutifs qui peuvent former un quart de 12 heures
 array[J, Q, J, Q] of bool: A = 
     array4d(J, Q, J, Q,
         [ debut[qp] + (jp - 1) * 24.0 = fin[q] + (j - 1) * 24.0 
           /\ duree[q] + duree[qp] == 12.0
-        | j in J, q in QUART, jp in J, qp in QUART ]);
+        | j in J, q in Q, jp in J, qp in Q ]);
 
 % Triplets de quarts consécutifs dont la durée totale > 12 heures
 array[J, Q, J, Q, J, Q] of bool: T = 
@@ -67,13 +66,17 @@ array[J, Q, J, Q, J, Q] of bool: T =
         [ debut[qp] + (jp - 1) * 24.0 = fin[q] + (j - 1) * 24.0 
           /\ debut[qpp] + (jpp - 1) * 24.0 = fin[qp] + (jp - 1) * 24.0 
           /\ duree[q] + duree[qp] + duree[qpp] > 12.0
-        | j in J, q in QUART, jp in J, qp in QUART, jpp in J, qpp in QUART ]);
+        | j in J, q in Q, jp in J, qp in Q, jpp in J, qpp in Q ]);
 
 % Congés posés par les employés réguliers
-array[I, J] of 0..1: C_ij = array2d(I, J, [0 | i in I, j in J]);
+array[IR] of set of J: C =
+  [ if i == 4 then {1,2,3}
+    elseif i == 7 then {5,6}
+    else {} endif
+  | i in IR ];
 
 %========================================================
-%LES PARAMÈTRES: 
+% PARAMÈTRES
 %========================================================
 
 array[I] of float: T_max = 
@@ -115,53 +118,69 @@ array[J,Q] of int: r_jq = [|
      3,  21,  23,  18,  17,  14,  10,  14 |  % j9
      3,  21,  23,  18,  17,  14,  10,  14 |  % j10
      3,  21,  23,  18,  17,  14,  10,  14 |  % j11
-     3,  21,  23,  18,  17,  14,  10,  14 | % j12
+     3,  21,  23,  18,  17,  14,  10,  14 |  % j12
      3,  21,  23,  18,  17,  14,  10,  14 |  % j13
      3,  21,  23,  18,  17,  14,  10,  14 |  % j14
 |];
 
 
-% Préférence de l'employé i pour le jour j et le quart q ∈ [1, 10]
-array[I, J, 1..8] of int: p_ijq =
-  array3d(I, J, 1..8,
-    [ if i in 1..10 /\ q in 2..8 /\ (j in 1..5 \/ j in 8..12) then 5 %pref uniform sur la semaine
-      elseif i in 1..10 /\ q in 2..8 /\ (j in 6..7 \/ j in 13..14) then 2 %moins les weekend
-      elseif i == 11 /\ q = 1 /\ (j in 1..5 \/ j in 8..12) then 10 %le travailleur de nuit
-      
-      elseif i in 12..24 /\ q in 2..8 /\ (j in 1..5 \/ j in 8..12) then 5
-      elseif i in 12..24 /\ q in 2..8 /\ (j in 6..7 \/ j in 13..14) then 3
-      elseif i in 12..24 /\ q = 1 /\ (j in 1..14) then 1 %personne veut travailler la nuit
+% Préférence de l'employé i pour le jour j et le quart q ∈ [1, 20]
+array[I,J,Q] of int: p = array3d(I,J,Q,
+  [ let {
+      % Score jour vs weekend
+      int: score_j =
+        if i in IR \/ i in IP then
+          if j in (J diff JW) then 10 else 5 endif   % IR/IP : semaine > weekend
+        else
+          if j in JW then 10 else 5 endif            % IE : weekend > semaine
+        endif;
 
-      elseif i in 25..87 /\ q in 1..8/\ (j in 6..7 \/ j in 13..14) then 5 % le week c'est égale partout
-      elseif i in 25..87 /\ q in 6..8 /\ (j in 1..5 \/ j in 8..12) then 6 % pref pour les quarts du soir
-      elseif i in 25..87 /\ q = 1 /\ (j in 1..5 \/ j in 8..12) then 4 %quart du soir en semaine
-      elseif i in 25..87 /\ q in 2..5 /\ (j in 1..5 \/ j in 8..12) then 2 % journé la semaine
-      else 0
-      endif
-      | i in I, j in J, q in 1..8
-    ]
-    
-  );
+      % Score quart (jour/soir/nuit)
+      int: score_q =
+        if i in IR \/ i in IP then       % IR/IP :
+          if q in QJ then 10               % jour préféré
+          elseif q in QS then 8            % soir toléré
+          elseif i in IN then 5            % nuit neutre pour IN
+          else 1                           % nuit détestée
+          endif
+        else                             % IE :
+          if q in QS then 10               % soir préféré
+          elseif q in QJ then 8            % jour toléré
+          elseif i in IN then 5            % nuit tolérée pour IN
+          else 2                           % nuit pas aimée
+          endif                        
+        endif;
+    }
+    in score_j + score_q
+  | i in I, j in J, q in Q ]
+);
+
+
+
 
 
 
 %========================================================
-%VARIABLE DE DESCISION: 
+% VARIABLES DE DÉCISION
 %========================================================
 array[I, J, Q] of var 0..1: x_ijq;  
 
 %variable = 1 si personne i travail un quart de 12h au qart q et q+1 ou q et q-1, jour j 
-array[I, J, Q] of var 0..1: y_ijq;
+%array[I, J, Q] of var 0..1: y_ijq;
+
+
+
+
 
 %========================================================
-%CONTRAINTES
+% CONTRAINTES
 %========================================================
 %40 heures de travail granties pour employés reg
-constraint forall(i in IR, l in JL)(
-    sum(j in l..(l+6), q in Q)(
-        duree[q] * x_ijq[i,j,q]
-    ) >= 40.0
-);
+%constraint forall(i in IR, l in JL)(
+%    sum(j in l..(l+6), q in Q)(
+%        duree[q] * x_ijq[i,j,q]
+%    ) >= 40.0
+%);
 
 %ne depasse pas le temp max par employé
 constraint forall(i in I, l in JL)(
@@ -181,9 +200,9 @@ constraint forall(i in I, j in J, q in Q, jp in J, qp in Q, jpp in J, qpp in Q w
  );
 
 %couverture 1
-constraint forall(j in J, q in Q)(
-    sum(i in I)(x_ijq[i,j,q]) >= r_jq[j,q]
-);
+%constraint forall(j in J, q in Q)(
+%    sum(i in I)(x_ijq[i,j,q]) >= r_jq[j,q]
+%);
 %couverture 2:
 constraint forall(j in J)(
     sum(q in Q, i in I)(x_ijq[i,j,q]) >= (sum(q in Q)(r_jq[j,q])+a_j[j])
@@ -209,7 +228,7 @@ constraint forall(i in I where not (i in IN))(
  
  % Contrainte des congés accordés
 constraint forall(i in IR)(
-    sum(j in J, q in Q)(C_ij[i,j] * x_ijq[i,j,q]) = 0
+    sum(j in C[i], q in Q)(x_ijq[i,j,q]) = 0
 );
  
 
@@ -223,9 +242,9 @@ constraint forall(i in IR)(
  );
  
  %regrouper les congés isolés
- constraint forall(i in I where not(i in IE), j in J)(
-    sum(q in Q)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q] - 2*x_ijq[i,j,q]) <= 1 +sum(q in Q)(x_ijq[i,j,q]*y_ijq[i,j,q])
-);
+% constraint forall(i in I where not(i in IE), j in J)(
+%    sum(q in Q)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q] - 2*x_ijq[i,j,q]) <= 1 +sum(q in Q)(x_ijq[i,j,q]*y_ijq[i,j,q])
+%);
  
  
  %contraintes qui initializent et mettes à jour les parametres m_ij, n_ij
@@ -267,12 +286,12 @@ constraint forall(i in I where not (i in IN), j in J)(
 );
  
 %========================================================
-%VFONCTION OBJECTIF:
+% FONCTION OBJECTIF:
 %========================================================
 
 %fonction des préférence f1:
 var float: f1 = sum(i in I, j in J, q in Q)(
-  p_ijq[i,j,q]*x_ijq[i,j,q]
+  p[i,j,q]*x_ijq[i,j,q]
   );
 
 %les trois fonctions d'équité selon le type d'employé
