@@ -481,14 +481,15 @@ var float: f4 = -sum(i in I, j in J, q in Q, qp in quarts_2h[q])(abs_diff_x[i,j,
 var float: f5 = -sum(j in J, h in H)(z_jh[j,h]);
 
 % Fonction objectif finale
-array[1..6] of float: w = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+array[1..7] of float: w = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 var float: fo = 
     w[1] * f1 +
     w[2] * f2R + 
     w[3] * f2P +
     w[4] * f2E +
     w[5] * f3 +
-    w[6] * f4; 
+    w[6] * f4 + 
+    w[7] * f5;
 
 solve maximize fo;
  
