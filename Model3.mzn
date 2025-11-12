@@ -404,47 +404,91 @@ constraint forall(j in J, h in H)(
     n_h[h] <= 4 * lmd * s_jh[j,h] + M * z_jh[j,h]
 );
 
+
 %========================================================
-% FONCTION OBJECTIF:
+% VARIABLES POUR LINÉARISATION
 %========================================================
 
-%fonction des préférence f1:
-var float: f1 = sum(i in I, j in J, q in Q)(
-  p[i,j,q]*x_ijq[i,j,q]
-  );
+% Pour f2R, f2P, f2E
+array[IR] of var float: diff_R;
+array[IR] of var float: abs_diff_R;
+array[IP] of var float: diff_P;  
+array[IP] of var float: abs_diff_P;
+array[IE] of var float: diff_E;
+array[IE] of var float: abs_diff_E;
 
-%les trois fonctions d'équité selon le type d'employé
-var float: f2R = -abs(sum(i in IR, j in J, q in Q)(
-  x_ijq[i,j,q] - c_barre[i]
-  ));
+% Pour f3
+var int: total_jour = sum(i in I, j in J, q in QJ)(x_ijq[i,j,q]);
+var int: total_soir = sum(i in I, j in J, q in QS)(x_ijq[i,j,q]);
+var int: diff_js = total_jour - total_soir;
+var int: abs_diff_js;
 
-var float: f2P = -abs(sum(i in IP, j in J, q in Q)(
-  x_ijq[i,j,q] - c_barre[i]
-  ));
- 
-var float: f2E = -abs(sum(i in IE, j in J, q in Q)(
-  x_ijq[i,j,q] - c_barre[i]
-  ));
-  
- %fonction d'ergonomie (que du jours ou que du soir)
- var int: f3 = pow(
-    sum(i in I, j in J, q in QJ)(x_ijq[i,j,q])-sum(i in I,j in J, q in QS)(x_ijq[i,j,q]),2
- );
- %definir QJ et QS, var int? comme on somme sur 2 dimesnion seulement?
- var float: f4 = -sum(i in I, j in J, q in Q, qp in quarts_2h[q])( %??:??????"????
-    abs(x_ijq[i,j,q] - x_ijq[i,j,qp])
+% Pour f4  
+array[I, J, Q, Q] of var 0..1: abs_diff_x;
+
+%========================================================
+% CONTRAINTES DE LINÉARISATION
+%========================================================
+
+% Linéarisation f2R, f2P, f2E
+constraint forall(i in IR)(
+    diff_R[i] = sum(j in J, q in Q)(x_ijq[i,j,q]) - c_barre[i] /\
+    abs_diff_R[i] >= diff_R[i] /\
+    abs_diff_R[i] >= -diff_R[i]
 );
 
- 
- array[1..6] of float: w = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
- %la fonctions objectif au complet: 
- var float: fo = 
-    w[1]*f1 +
-    w[2]*f2R + 
-    w[3]*f2P +
-    w[4]*f2E +
-    w[5]*f3 +
-    w[6]*f4; 
- 
- solve maximize fo;
+constraint forall(i in IP)(
+    diff_P[i] = sum(j in J, q in Q)(x_ijq[i,j,q]) - c_barre[i] /\
+    abs_diff_P[i] >= diff_P[i] /\
+    abs_diff_P[i] >= -diff_P[i]
+);
+
+constraint forall(i in IE)(
+    diff_E[i] = sum(j in J, q in Q)(x_ijq[i,j,q]) - c_barre[i] /\
+    abs_diff_E[i] >= diff_E[i] /\
+    abs_diff_E[i] >= -diff_E[i]
+);
+
+% Linéarisation f3
+constraint abs_diff_js >= diff_js;
+constraint abs_diff_js >= -diff_js;
+
+% Linéarisation f4
+constraint forall(i in I, j in J, q in Q, qp in quarts_2h[q])(
+    abs_diff_x[i,j,q,qp] >= x_ijq[i,j,q] - x_ijq[i,j,qp] /\
+    abs_diff_x[i,j,q,qp] >= x_ijq[i,j,qp] - x_ijq[i,j,q]
+);
+
+%========================================================
+% FONCTIONS OBJECTIF LINÉARISÉES
+%========================================================
+
+% f1 reste linéaire
+var float: f1 = sum(i in I, j in J, q in Q)(p[i,j,q] * x_ijq[i,j,q]);
+
+% f2 linéarisées
+var float: f2R = -sum(i in IR)(abs_diff_R[i]);
+var float: f2P = -sum(i in IP)(abs_diff_P[i]);
+var float: f2E = -sum(i in IE)(abs_diff_E[i]);
+
+% f3 linéarisée (approximation)
+var int: f3 = -abs_diff_js;
+
+% f4 linéarisée
+var float: f4 = -sum(i in I, j in J, q in Q, qp in quarts_2h[q])(abs_diff_x[i,j,q,qp]);
+
+%f5:
+var float: f5 = -sum(j in J, h in H)(z_jh[j,h]);
+
+% Fonction objectif finale
+array[1..6] of float: w = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+var float: fo = 
+    w[1] * f1 +
+    w[2] * f2R + 
+    w[3] * f2P +
+    w[4] * f2E +
+    w[5] * f3 +
+    w[6] * f4; 
+
+solve maximize fo;
  
