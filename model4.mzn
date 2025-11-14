@@ -137,37 +137,34 @@ array[J,H] of var 0..1: z_jh;
 % CONTRAINTES (HEAVY ONES COMMENTED OUT)
 %========================================================
 
-% BASIC CONSTRAINT: One shift per employee per day
 constraint forall(i in I, j in J)(
     sum(q in Q)(x_ijq[i,j,q]) <= 1
 );
 
-% HEAVY: 16h rest constraints - COMMENTED OUT
 % constraint forall(i in I, j in J, q in Q, jp in J, qp in Q) (
 %     (is_F(j,q,jp,qp) /\ not is_A(j,q,jp,qp)) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] <= 1)
 % );
 
-% HEAVY: avoid triple constraints - COMMENTED OUT
 % constraint forall(i in I, j in J, q in Q, jp in J, qp in Q, jpp in J, qpp in Q) (
 %     is_T(j,q,jp,qp,jpp,qpp) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] + x_ijq[i,jpp,qpp] <= 2)
 % );
 
-% LIGHT: Max night shifts
+%Max night shifts
 constraint forall(i in I where not (i in IN))(
     sum(j in J, q in QN)(x_ijq[i,j,q]) <= 1
 );
 
-% LIGHT: No weekend work if not allowed
+%No weekend work if not allowed
 constraint forall(i in I where not (i in IW))(
     sum(j in J where not (j in JW), q in Q)(x_ijq[i,j,q]) = 0
 );
 
-% LIGHT: Congés
+% Congés
 constraint forall(i in IR)(
     sum(j in C[i], q in Q)(x_ijq[i,j,q]) = 0
 );
 
-% HEAVY: Ergonomics constraints - COMMENTED OUT
+%constraintes ergonomiques
 % constraint forall(i in I where not(i in IE), j in 2..horizon-1)(
 %     sum(q in QN)(x_ijq[i,j,q]) <= sum(q in QN)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q])
 % );
@@ -185,7 +182,7 @@ constraint forall(j in J, h in H)(
     s_jh[j,h] >= 0 /\ s_jh[j,h] <= card(I)
 );
 
-% ESSENTIAL: Coverage constraints (with slack)
+% ESSENTIAL: Coverage constraints 
 int: M = 1000;
 constraint forall(j in J, h in H)(
     n_h[h] <= 4 * lmd * s_jh[j,h] + M * z_jh[j,h]
