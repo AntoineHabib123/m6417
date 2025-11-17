@@ -61,9 +61,9 @@ array[IR] of set of J: C =
 %========================================================
 
 array[I] of float: T_max = 
-    [40.0 | i in IR] ++
-    [40.0 | i in IP] ++
-    [20.0 | i in IE];
+    [80.0 | i in IR] ++
+    [80.0 | i in IP] ++
+    [40.0 | i in IE];
 
 int: k = 2;
 
@@ -141,13 +141,11 @@ constraint forall(i in I, j in J)(
     sum(q in Q)(x_ijq[i,j,q]) <= 1
 );
 
-
-
-
-
-% constraint forall(i in I, j in J, q in Q, jp in J, qp in Q) (
-%     (is_F(j,q,jp,qp) /\ not is_A(j,q,jp,qp)) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] <= 1)
-% );
+/*
+constraint forall(i in I, j in J, q in Q, jp in J, qp in Q) (
+    (is_F(j,q,jp,qp) /\ not is_A(j,q,jp,qp)) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] <= 1)
+ );
+*/
 
 %Max night shifts
 constraint forall(i in I where not (i in IN))(
@@ -231,7 +229,7 @@ var int: total_jour = sum(i in I, j in J, q in QJ)(x_ijq[i,j,q]);
 var int: total_soir = sum(i in I, j in J, q in QS)(x_ijq[i,j,q]);
 var int: diff_js = total_jour - total_soir;
 var 0..M2: abs_diff_js;
-constraint abs_diff_js >= diff_js;
+constraint abs_diff_js >= diff_js; 
 constraint abs_diff_js >= -diff_js;
 
 %array[I, J, Q, Q] of var 0..1: abs_diff_x;
@@ -240,6 +238,19 @@ constraint abs_diff_js >= -diff_js;
 %     abs_diff_x[i,j,q,qp] >= x_ijq[i,j,qp] - x_ijq[i,j,q]
 % );
 
+%penaliser les overtimes
+int: M_OT_MAX = horizon * max([duree_int[q] | q in Q]); 
+
+% overtime per employee (in half-hours)
+array[I] of var 0..M_OT_MAX: ot;
+% total overtime
+var 0..(card(I) * M_OT_MAX): total_ot = sum(i in I)(ot[i]);
+
+constraint forall(i in I) (
+    ot[i] >= sum(j in J, q in Q)(duree_int[q] * x_ijq[i,j,q]) - T_max[i] /\
+    ot[i] >= 0
+);
+var int: f_ot = - total_ot;
 %========================================================
 % OBJECTIVE (SIMPLIFIED)
 %========================================================
@@ -252,9 +263,10 @@ var int: f3 = -abs_diff_js;
 % var int: f4 = -sum(i in I, j in J, q in Q, qp in quarts_2h[q])(abs_diff_x[i,j,q,qp]); % COMMENTED OUT
 var int: f5 = -sum(j in J, h in H)(z_jh[j,h]);
 
+
 % Simplified objective weights - focus on preferences and hours
-array[1..5] of int: w = [1,1,1,1,1]; % Reduced from 7 to 5 weights
-var int: fo = w[1]*f1 + w[3]*f3 + w[5]*f5;
+array[1..6] of int: w = [500,1,1,1,1,100]; % Reduced from 7 to 5 weights
+var int: fo = w[1]*f1 + w[3]*f3 + w[5]*f5 +w[6]*f_ot;
 
 solve maximize fo;
 
@@ -263,7 +275,8 @@ output [
   "Objective: ", show(fo), "\n",
   "f1: ", show(f1), "\n", 
   "f3: ", show(f3), "\n", 
-  "f5: ", show(f5), "\n", 
+  "f5: ", show(f5), "\n",
+  "f_ot:", show(total_ot), "\n", 
   "Coverage violations: ", show(sum(j in J, h in H)(z_jh[j,h])), "\n",
   "Total assignments: ", show(sum(i in I, j in J, q in Q)(x_ijq[i,j,q])), "\n",
   "x_ijq: ", show(x_ijq) , "\n"
