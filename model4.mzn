@@ -16,6 +16,8 @@ set of int: IW = I;                                  % Employés disposés à tr
 
 int: horizon = 14;
 set of int: J = 1..horizon;
+set of int: W = 1..(horizon div 7);
+
 
 set of int: JL = {j | j in J where j mod 7 == 1};
 set of int: JW = {j | j in J where j mod 7 == 0 \/ j mod 7 == 6};
@@ -141,6 +143,9 @@ constraint forall(i in I, j in J)(
     sum(q in Q)(x_ijq[i,j,q]) <= 1
 );
 
+constraint forall(i in IR, w in W)(
+    sum(j in JL[w]..JL[w]+6, q in Q)(x_ijq[i,j,q]*duree_int[q]) >= 80
+ );
 /*
 constraint forall(i in I, j in J, q in Q, jp in J, qp in Q) (
     (is_F(j,q,jp,qp) /\ not is_A(j,q,jp,qp)) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] <= 1)
@@ -265,8 +270,8 @@ var int: f5 = -sum(j in J, h in H)(z_jh[j,h]);
 
 
 % Simplified objective weights - focus on preferences and hours
-array[1..6] of int: w = [500,1,1,1,1,100]; % Reduced from 7 to 5 weights
-var int: fo = w[1]*f1 + w[3]*f3 + w[5]*f5 +w[6]*f_ot;
+array[1..6] of int: a = [50,1,1,1,1,500]; % Reduced from 7 to 5 weights
+var int: fo = a[1]*f1 + a[3]*f3 + a[5]*f5 +a[6]*f_ot;
 
 solve maximize fo;
 
