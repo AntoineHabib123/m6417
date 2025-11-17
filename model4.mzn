@@ -22,16 +22,16 @@ set of int: JW = {j | j in J where j mod 7 == 0 \/ j mod 7 == 6};
 
 set of int: H = 1..96;  
 
-enum Q = {q0_8, q7_8, q8_8, q11_5_8, q12_8, q14_8, q16_8, q16_4};
+enum Q = {q0_8, q7_8, q8_8, q11_5_8, q12_8, q14_8, q16_8, q8_12};
 
 % Convert time parameters to integers (multiply by 2 to avoid decimals)
-array[Q] of int: debut_int = [ 0, 14, 16, 23, 24, 28, 32, 32 ];
-array[Q] of int: duree_int = [ 16, 16, 16, 16, 16, 16, 16, 8 ];
+array[Q] of int: debut_int = [ 0, 14, 16, 23, 24, 28, 32, 16 ];
+array[Q] of int: duree_int = [ 16, 16, 16, 16, 16, 16, 16, 24 ];
 array[Q] of int: fin_int = [debut_int[q] + duree_int[q] | q in Q];
 
 set of Q: QN = {q0_8};
-set of Q: QJ = {q7_8, q8_8, q11_5_8, q12_8, q14_8};
-set of Q: QS = {q16_8, q16_4};
+set of Q: QJ = {q7_8, q8_8, q11_5_8, q12_8, q14_8, q8_12};
+set of Q: QS = {q16_8, q8_12};
 
 array[Q] of set of Q: quarts_2h = 
     [ {r | r in Q where debut_int[r] - debut_int[q] <= 4} | q in Q ];
@@ -143,12 +143,10 @@ constraint forall(i in I, j in J)(
 
 
 
+
+
 % constraint forall(i in I, j in J, q in Q, jp in J, qp in Q) (
 %     (is_F(j,q,jp,qp) /\ not is_A(j,q,jp,qp)) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] <= 1)
-% );
-
-% constraint forall(i in I, j in J, q in Q, jp in J, qp in Q, jpp in J, qpp in Q) (
-%     is_T(j,q,jp,qp,jpp,qpp) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] + x_ijq[i,jpp,qpp] <= 2)
 % );
 
 %Max night shifts
@@ -271,10 +269,10 @@ output [
   "x_ijq: ", show(x_ijq) , "\n"
 ];
 
-/* Après 2:30h
-Solution found!
-Objective: 4411
-Preferences: 6300
-Coverage violations: 1102
-Total assignments: 381
-*/
+/*Solution found! en 14min
+Objective: 19870
+f1: 19920
+f3: -50
+f5: 0
+Coverage violations: 0
+Total assignments: 1202/*
