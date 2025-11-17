@@ -141,6 +141,8 @@ constraint forall(i in I, j in J)(
     sum(q in Q)(x_ijq[i,j,q]) <= 1
 );
 
+
+
 % constraint forall(i in I, j in J, q in Q, jp in J, qp in Q) (
 %     (is_F(j,q,jp,qp) /\ not is_A(j,q,jp,qp)) -> (x_ijq[i,j,q] + x_ijq[i,jp,qp] <= 1)
 % );
@@ -183,7 +185,7 @@ constraint forall(j in J, h in H)(
 );
 
 % ESSENTIAL: Coverage constraints 
-int: M = 1000;
+int: M = max(n_h);
 constraint forall(j in J, h in H)(
     n_h[h] <= 4 * lmd * s_jh[j,h] + M * z_jh[j,h]
 );
@@ -192,6 +194,8 @@ constraint forall(j in J, h in H)(
 % VARIABLES POUR LINÉARISATION (integers)
 %========================================================
 
+
+/*
 array[IR] of var int: diff_R;
 array[IR] of var int: abs_diff_R;
 array[IP] of var int: diff_P;  
@@ -199,14 +203,12 @@ array[IP] of var int: abs_diff_P;
 array[IE] of var int: diff_E;
 array[IE] of var int: abs_diff_E;
 
-var int: total_jour = sum(i in I, j in J, q in QJ)(x_ijq[i,j,q]);
-var int: total_soir = sum(i in I, j in J, q in QS)(x_ijq[i,j,q]);
-var int: diff_js = total_jour - total_soir;
-var int: abs_diff_js;
 
-array[I, J, Q, Q] of var 0..1: abs_diff_x;
+
+
 
 % Linéarisation constraints
+
 constraint forall(i in IR)(
     diff_R[i] = sum(j in J, q in Q)(x_ijq[i,j,q]) - c_barre[i] /\
     abs_diff_R[i] >= diff_R[i] /\
@@ -224,10 +226,17 @@ constraint forall(i in IE)(
     abs_diff_E[i] >= diff_E[i] /\
     abs_diff_E[i] >= -diff_E[i]
 );
+*/
 
+int: M2 = 50;
+var int: total_jour = sum(i in I, j in J, q in QJ)(x_ijq[i,j,q]);
+var int: total_soir = sum(i in I, j in J, q in QS)(x_ijq[i,j,q]);
+var int: diff_js = total_jour - total_soir;
+var 0..M2: abs_diff_js;
 constraint abs_diff_js >= diff_js;
 constraint abs_diff_js >= -diff_js;
 
+%array[I, J, Q, Q] of var 0..1: abs_diff_x;
 % constraint forall(i in I, j in J, q in Q, qp in quarts_2h[q])(
 %     abs_diff_x[i,j,q,qp] >= x_ijq[i,j,q] - x_ijq[i,j,qp] /\
 %     abs_diff_x[i,j,q,qp] >= x_ijq[i,j,qp] - x_ijq[i,j,q]
@@ -238,23 +247,25 @@ constraint abs_diff_js >= -diff_js;
 %========================================================
 
 var int: f1 = sum(i in I, j in J, q in Q)(p[i,j,q] * x_ijq[i,j,q]);
-var int: f2R = -sum(i in IR)(abs_diff_R[i]);
-var int: f2P = -sum(i in IP)(abs_diff_P[i]);
-var int: f2E = -sum(i in IE)(abs_diff_E[i]);
+%var int: f2R = -sum(i in IR)(abs_diff_R[i]);
+%var int: f2P = -sum(i in IP)(abs_diff_P[i]);
+%var int: f2E = -sum(i in IE)(abs_diff_E[i]);
 var int: f3 = -abs_diff_js;
 % var int: f4 = -sum(i in I, j in J, q in Q, qp in quarts_2h[q])(abs_diff_x[i,j,q,qp]); % COMMENTED OUT
 var int: f5 = -sum(j in J, h in H)(z_jh[j,h]);
 
 % Simplified objective weights - focus on preferences and hours
 array[1..5] of int: w = [1,1,1,1,1]; % Reduced from 7 to 5 weights
-var int: fo = w[1]*f1 + w[2]*f2R + w[3]*f2P + w[4]*f2E + w[5]*f5;
+var int: fo = w[1]*f1 + w[3]*f3 + w[5]*f5;
 
 solve maximize fo;
 
 output [
   "Solution found!\n",
   "Objective: ", show(fo), "\n",
-  "Preferences: ", show(f1), "\n", 
+  "f1: ", show(f1), "\n", 
+  "f3: ", show(f3), "\n", 
+  "f5: ", show(f5), "\n", 
   "Coverage violations: ", show(sum(j in J, h in H)(z_jh[j,h])), "\n",
   "Total assignments: ", show(sum(i in I, j in J, q in Q)(x_ijq[i,j,q])), "\n",
   "x_ijq: ", show(x_ijq) , "\n"
