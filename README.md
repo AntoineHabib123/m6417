@@ -5,5 +5,5 @@
 - Tous les objectifs qu'on a: preferences atteintes (créer des cas genre 60% des étudiants aiment plus le samedi que le dimanche), 
 - ergonomimie des horraires
 - les pénalitées des overtimes.
-- changer la valeur de lambda (temps moyen d'attente autorisé)
+- différentes valeures de lambda (temps moyen d'attente autorisé)
 - 
