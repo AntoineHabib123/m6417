@@ -6,3 +6,4 @@
 - ergonomimie des horraires
 - les pénalitées des overtimes.
 - changer la valeur de lambda (temps moyen d'attente autorisé)
+- 
