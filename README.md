@@ -4,4 +4,4 @@
 - Nombre d'appels raccrochés
 - Tous les objectifs qu'on a
 - les pénalitées des overtimes.
-- 
+- changer la valeur de lambda 
