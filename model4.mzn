@@ -168,13 +168,15 @@ constraint forall(i in IR)(
 );
 
 %constraintes ergonomiques
-% constraint forall(i in I where not(i in IE), j in 2..horizon-1)(
-%     sum(q in QN)(x_ijq[i,j,q]) <= sum(q in QN)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q])
-% );
-% 
-% constraint forall(i in I where not(i in IE), j in 2..horizon-1)(
-%     sum(q in QN)(x_ijq[i,j-1,q]+x_ijq[i,j,q]+x_ijq[i,j+1,q]) <= 2
-% );
+constraint forall(i in I where not(i in IE), j in 2..horizon-1)(
+     sum(q in QN)(x_ijq[i,j,q]) <= sum(q in QN)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q])
+ );
+
+
+ constraint forall(i in I where not(i in IE), j in 2..horizon-1)(
+     sum(q in QN)(x_ijq[i,j-1,q]+x_ijq[i,j,q]+x_ijq[i,j+1,q]) <= 2
+ );
+ 
 
 % ESSENTIAL: Staffing calculation
 constraint forall(j in J, hb in H)(
@@ -190,6 +192,18 @@ int: M = max(n_h);
 constraint forall(j in J, h in H)(
     n_h[h] <= 4 * lmd * s_jh[j,h] + M * z_jh[j,h]
 );
+
+constraint forall(j in J)(
+    sum(i in I, q in QN)(x_ijq[i,j,q]) >= 1
+ );
+ 
+constraint forall(j in J)(
+    sum(i in I, q in QJ)(x_ijq[i,j,q]) >= 1
+ );
+
+constraint forall(j in J)(
+    sum(i in I, q in QS)(x_ijq[i,j,q]) >= 1
+ );
 
 %========================================================
 % VARIABLES POUR LINÉARISATION (integers)
@@ -268,9 +282,8 @@ var int: f3 = -abs_diff_js;
 % var int: f4 = -sum(i in I, j in J, q in Q, qp in quarts_2h[q])(abs_diff_x[i,j,q,qp]); % COMMENTED OUT
 var int: f5 = -sum(j in J, h in H)(z_jh[j,h]);
 
-
 % Simplified objective weights - focus on preferences and hours
-array[1..6] of int: a = [50,1,1,1,1,500]; % Reduced from 7 to 5 weights
+array[1..6] of int: a = [200,1,1,1,1,500]; % Reduced from 7 to 5 weights
 var int: fo = a[1]*f1 + a[3]*f3 + a[5]*f5 +a[6]*f_ot;
 
 solve maximize fo;
@@ -287,10 +300,3 @@ output [
   "x_ijq: ", show(x_ijq) , "\n"
 ];
 
-/*Solution found! en 14min
-Objective: 19870
-f1: 19920
-f3: -50
-f5: 0
-Coverage violations: 0
-Total assignments: 1202/*
