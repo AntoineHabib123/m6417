@@ -1,0 +1,106 @@
+IR = 1..11;
+IP = 12..24;
+IE = 25..86;
+I = IR union IP union IE;
+
+IC = IR;
+IN = 10..11 union 12..16 union 25..39;
+IW = I;
+
+horizon = 14;
+J = 1..horizon;
+W = 1..(horizon div 7);
+
+JL = {j | j in J where j mod 7 == 1};
+JW = {j | j in J where j mod 7 == 0 \/ j mod 7 == 6};
+
+H = 1..96;
+
+debut_int = [0,14,16,23,24,28,32,16];
+duree_int = [16,16,16,16,16,16,16,24];
+fin_int = [debut_int[q] + duree_int[q] | q in Q];
+
+QN = {q0_8};
+QJ = {q7_8,q8_8,q11_5_8,q12_8,q14_8,q8_12};
+QS = {q16_8,q8_12};
+
+C =
+  [ if i == 4 then {1}
+    elseif i == 7 then {5}
+    else {} endif
+  | i in IR ];
+
+T_max =
+    [80.0 | i in IR] ++
+    [80.0 | i in IP] ++
+    [40.0 | i in IE];
+
+c_barre =
+    [24 | i in IR] ++
+    [20 | i in IP] ++
+    [10 | i in IE];
+
+patience = 3;
+
+lmd = 2;
+
+n_h = [
+  3,3,3,4, 2,2,3,3, 2,2,2,3, 2,2,2,2,
+  2,2,2,2, 2,2,3,3, 4,5,5,5, 8,8,9,9,
+  56,56,57,57, 58,58,59,59, 55,55,55,56,
+  50,50,50,51, 45,45,45,46, 45,46,46,46,
+  43,44,44,44, 43,44,43,44, 11,11,12,12,
+  11,11,12,12, 44,44,44,44, 43,43,43,43,
+  9,10,10,10, 8,8,8,8, 7,6,6,6, 5,5,4,4
+];
+
+plages_quarts = [
+  1..31,
+  29..60,
+  33..64,
+  46..77,
+  49..80,
+  57..88,
+  65..96,
+  65..81
+];
+
+a_hq =
+  array2d(H, Q,
+    [ if h in plages_quarts[q] then 1 else 0 endif
+      | h in H, q in Q ] );
+
+p =
+  array3d(I,J,Q,
+    [ let {
+        int: score_j =
+          if i in IR \/ i in IP then
+            if j in (J diff JW) then 10 else 5 endif
+          else
+            if j in JW then 10 else 5 endif
+          endif;
+
+        int: score_q =
+          if i in IR \/ i in IP then
+            if q in QJ then 10
+            elseif q in QS then 8
+            elseif i in IN then 5
+            else 1
+            endif
+          else
+            if q in QS then 10
+            elseif q in QJ then 8
+            elseif i in IN then 5
+            else 2
+            endif
+          endif;
+      }
+      in score_j + score_q
+    | i in I, j in J, q in Q ] );
+
+
+w_preferences = 200;
+w_equilibre_jour_soir = 1;
+w_couverture = 50;
+w_heures_sup = 1000;
+w_repos = 2000;
