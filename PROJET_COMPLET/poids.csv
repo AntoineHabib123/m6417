@@ -1,0 +1,14 @@
+200	1	50	1000	2000	8	216	0	
+100	50	50	500	1000	5	285	0	
+200	20	100	500	2000	5	281	0	Dans cet solution on affecte des étudiants à des heures  qui ne sont pas que le soir (les weekends)
+10	100	100	100	1000	4	135	0	petit poids de pref donne des résultats plus variés au niveau de la presence moyenne, des étudiants qui travaillent le matins
+50	100	100	10	1000	26	40	Les étudiants font en moyenne 16h sup par personne	le nombre de jours consecutifs pr employés reg soufre
+100	10	100	100	1000	25	84	0	il y a des jours où presque aucun appel est raccroché
+100	10	100	100	1000	6	120	0	Avec contraintes ergo
+								
+								
+								
+								
+								
+								
+								
