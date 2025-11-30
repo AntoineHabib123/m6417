@@ -47,7 +47,10 @@ array[J,H] of float: n_jh =
   array2d(J,H, [ (if j in JW then n_h_fds[h] else n_h_sem[h] endif) | j in J, h in H ]);
 
 array[Q] of set of H: plages_quarts;
-array[H, Q] of int: a_hq;
+array[Q] of set of H: plages_pause_15;
+array[Q] of set of H: plages_pause_60;
+
+array[H, Q] of float: a_hq;
 array[I,J,Q] of int: p;
 
 
@@ -72,7 +75,7 @@ predicate is_F(int: j, Q: q, int: jp, Q: qp) =
 
 array[I, J, Q] of var 0..1: x_ijq;
 
-array[J, H] of var 0..card(I): s_jh;
+array[J, H] of var float: s_jh;
 array[J, H] of var int: z_jh; % demande insatisfaite (en min)
 
 %========================================================

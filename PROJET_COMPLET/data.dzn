@@ -3,7 +3,7 @@ IP = 12..24;
 IE = 25..86;
 I = IR union IP union IE;
 
-IC = IR;
+IC = 1..4 union 20..23;
 IN = {11} union 23..24 union 75..86;
 IW = I;
 
@@ -64,13 +64,46 @@ plages_quarts = [
   49..80,
   57..88,
   65..96,
-  65..81
+  33..81
+];
+
+plages_pause_15 = [
+  7..10  union 23..26,                      % q1
+  35..38 union 51..54,                      % q2
+  39..42 union 55..58,                      % q3
+  52..55 union 68..71,                      % q4
+  55..58 union 71..74,                      % q5
+  63..66 union 79..82,                      % q6
+  71..74 union 87..90,                      % q7
+  39..42 union 55..58 union 63..66 union 71..74  % q8 (12h)
+];
+
+plages_pause_60 = [
+  13..20,   % q1
+  41..48,   % q2
+  45..52,   % q3
+  58..65,   % q4
+  61..68,   % q5
+  69..76,   % q6
+  77..84,   % q7
+  45..52    % q8 (12h)
 ];
 
 a_hq =
   array2d(H, Q,
-    [ if h in plages_quarts[q] then 1 else 0 endif
-      | h in H, q in Q ] );
+    [
+      if not (h in plages_quarts[q]) then
+        0.0
+      elseif h in plages_pause_60[q] then
+        0.5
+      elseif h in plages_pause_15[q] then
+        0.75
+      else
+        1.0
+      endif
+      | h in H, q in Q
+    ]
+  );
 
 p =
   array3d(I,J,Q,
@@ -127,5 +160,5 @@ PI_qp = [
 
 w_preferences = 1;
 w_equilibre_jour_soir = 0;
-w_couverture = 170;
+w_couverture = 200;
 w_heures_tot = 20;
