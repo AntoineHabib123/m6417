@@ -22,7 +22,7 @@ set of int: JW;
 
 set of int: H;  
 
-enum Q = {q0_8, q7_8, q8_8, q11_5_8, q12_8, q14_8, q16_8, q8_12};
+enum Q;
 
 array[Q] of int: debut_int;
 array[Q] of int: duree_int;
@@ -40,10 +40,23 @@ array[I] of float: T_max;
 array[I] of int: c_barre;
 int: patience;
 int: lmd;
-array[H] of int: n_h;
+
+array[H] of float: n_h_sem;
+array[H] of float: n_h_fds;
+array[J,H] of float: n_jh =
+  array2d(J,H, [ (if j in JW then n_h_fds[h] else n_h_sem[h] endif) | j in J, h in H ]);
+
 array[Q] of set of H: plages_quarts;
 array[H, Q] of int: a_hq;
 array[I,J,Q] of int: p;
+
+
+% Paires interdites
+int: NB_PAIRES_INTERDITES;
+array[1..NB_PAIRES_INTERDITES] of Q:   PI_q;
+array[1..NB_PAIRES_INTERDITES] of Q:   PI_qp;
+
+
 
 %========================================================
 % PRÉDICATS
@@ -59,12 +72,16 @@ predicate is_F(int: j, Q: q, int: jp, Q: qp) =
 
 array[I, J, Q] of var 0..1: x_ijq;
 
-array[J, H] of var int: s_jh;
-array[J,H] of var 0..1: z_jh;
+array[J, H] of var 0..card(I): s_jh;
+array[J, H] of var int: z_jh; % demande insatisfaite (en min)
 
 %========================================================
 % CONTRAINTES ESSENTIELLES
 %========================================================
+
+% Domaine z_jh
+constraint forall(j in J, h in H)(0 <= z_jh[j,h]);
+constraint forall(j in J, h in H)(z_jh[j,h] <= max(n_jh));
 
 constraint forall(i in I, j in J)(
     sum(q in Q)(x_ijq[i,j,q]) <= 1
@@ -89,16 +106,16 @@ constraint forall(i in IR)(
     sum(j in C[i], q in Q)(x_ijq[i,j,q]) = 0
 );
 
-/*
+
 % Contraintes ergonomiques
-constraint forall(i in I where not(i in IE), j in 2..horizon-1)(
+constraint forall(i in IN, j in 2..horizon-1)(
      sum(q in QN)(x_ijq[i,j,q]) <= sum(q in QN)(x_ijq[i,j-1,q] + x_ijq[i,j+1,q])
 );
 
-constraint forall(i in I where not(i in IE), j in 2..horizon-1)(
+constraint forall(i in IN, j in 2..horizon-1)(
      sum(q in QN)(x_ijq[i,j-1,q]+x_ijq[i,j,q]+x_ijq[i,j+1,q]) <= 2
 );
-*/
+
 
 % Staffing calculation
 constraint forall(j in J, hb in H)(
@@ -110,9 +127,8 @@ constraint forall(j in J, h in H)(
 );
 
 % Coverage constraints
-int: M = max(n_h);
 constraint forall(j in J, h in H)(
-    n_h[h] <= (patience+1) * lmd * s_jh[j,h] + M * z_jh[j,h]
+    n_jh[j,h] <= lmd * s_jh[j,h] + z_jh[j,h]
 );
 
 % Contraintes de couverture minimales par type de quart
@@ -128,19 +144,16 @@ constraint forall(j in J)(
     sum(i in I, q in QS)(x_ijq[i,j,q]) >= 1
 );
 
-%========================================================
-% VARIABLES POUR LA CONTRAINTE DE REPOS DANS L'OBJECTIF
-%========================================================
+% 16h repos
+constraint forall(i in IR union IP, j in 1..horizon-1, k in 1..NB_PAIRES_INTERDITES)(
+    x_ijq[i, j, PI_q[k]]  +  x_ijq[i, j+1, PI_qp[k]] <= 1
+);
 
-% Variable pour compter les violations de repos (pénalité douce)
-% Version simplifiée : on pénalise si l'employé travaille jour j ET jour j+1
-
-var int: violations_repos = sum(i in I, j in 1..horizon-1) (
-     let {
-         var 0..1: violation_jour =
-            sum(q in Q)(x_ijq[i,j,q]) * sum(qp in Q)(x_ijq[i,j+1,qp])
-     } in violation_jour
- );
+% Max 1 quart par jour
+constraint forall(i in I, j in J)(
+    sum(q in Q)(x_ijq[i,j,q]) <= 1
+);
+   
 
 %========================================================
 % AUTRES COMPOSANTES DE L'OBJECTIF
@@ -154,15 +167,6 @@ var 0..M2: abs_diff_js;
 constraint abs_diff_js >= diff_js; 
 constraint abs_diff_js >= -diff_js;
 
-% Overtime
-int: M_OT_MAX = horizon * max([duree_int[q] | q in Q]); 
-array[I] of var 0..M_OT_MAX: ot;
-var 0..(card(I) * M_OT_MAX): total_ot = sum(i in I)(ot[i]);
-constraint forall(i in I) (
-    ot[i] >= sum(j in J, q in Q)(duree_int[q] * x_ijq[i,j,q]) - T_max[i] /\
-    ot[i] >= 0
-);
-
 %========================================================
 % OBJECTIF AVEC PÉNALITÉ POUR LES VIOLATIONS DE REPOS
 %========================================================
@@ -174,29 +178,27 @@ var int: score_preferences =
 % Pénalité d’équilibre entre quarts de jour et du soir
 var int: penalite_equilibre_jour_soir = -abs_diff_js;
 
-% Pénalité : violations de la couverture (z_jh = 1)
+% Pénalité : violations de la couverture (nombre de minutes non servies)
+var int: max_z;
+constraint forall(j in J, h in H)(max_z >= z_jh[j,h]);
+
 var int: penalite_couverture =
-    -sum(j in J, h in H)(z_jh[j,h]);
+    -max_z;
 
 % Pénalité : heures supplémentaires totales
-var int: penalite_heures_sup = - total_ot;
-
-% Pénalité : violations des règles de repos
-var int: penalite_repos = - violations_repos;
+var int: penalite_heures_tot = - sum(i in I, j in J, q in Q)((duree_int[q] div 2)*x_ijq[i,j,q]);
 
 
 int: w_preferences;
 int: w_equilibre_jour_soir;
 int: w_couverture;
-int: w_heures_sup;
-int: w_repos;
+int: w_heures_tot;
 
 var int: objectif =
       w_preferences            * score_preferences
     + w_equilibre_jour_soir    * penalite_equilibre_jour_soir
     + w_couverture             * penalite_couverture
-    + w_heures_sup             * penalite_heures_sup
-    + w_repos                  * penalite_repos;
+    + w_heures_tot             * penalite_heures_tot;
 
 solve maximize objectif;
 
@@ -211,8 +213,7 @@ output [
   "  \"score_preferences\": ", show(score_preferences), ",\n",
   "  \"penalite_equilibre_jour_soir\": ", show(penalite_equilibre_jour_soir), ",\n",
   "  \"penalite_couverture\": ", show(penalite_couverture), ",\n",
-  "  \"penalite_heures_sup\": ", show(penalite_heures_sup), ",\n",
-  "  \"penalite_repos\": ", show(penalite_repos), ",\n",
+  "  \"penalite_heures_tot\": ", show(penalite_heures_tot), ",\n",
 
   "  \"x_ijq\": ", show(x_ijq), ",\n",
   "  \"s_jh\": ", show(s_jh), ",\n",
