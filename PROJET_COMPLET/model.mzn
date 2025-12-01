@@ -85,13 +85,18 @@ constraint forall(i in I, j in J)(
     sum(q in Q)(x_ijq[i,j,q]) <= 1
 );
 
+% 16h de repos entre chaque quart
+constraint forall(i in IR union IP, j in 1..horizon-1, k in 1..NB_PAIRES_INTERDITES)(
+    x_ijq[i, j, PI_q[k]]  +  x_ijq[i, j+1, PI_qp[k]] <= 1
+);
+
 % 40 heures garanties pour IR
 constraint forall(i in IR, w in W)(
     sum(j in JL[w]..JL[w]+6, q in Q)(x_ijq[i,j,q]*duree_int[q]) >= 80
 );
 
 % Temps de travail max autorisé
-constraint forall(i in IR, w in W)(
+constraint forall(i in I, w in W)(
     sum(j in JL[w]..JL[w]+6, q in Q)(x_ijq[i,j,q]*duree_int[q]) <= T_max[i]
 );
 
@@ -101,7 +106,7 @@ constraint forall(i in (I diff IN), j in J, q in QN)(
 );
 
 % Pas de fin de semaine si l'employé ne peut pas
-constraint forall(i in (I diff IW), j in (J diff JW), q in Q)(
+constraint forall(i in (I diff IW), j in JW, q in Q)(
     x_ijq[i,j,q] = 0
 );
 
@@ -120,16 +125,6 @@ constraint forall(i in IN, j in 2..horizon-1)(
      sum(q in QN)(x_ijq[i,j-1,q]+x_ijq[i,j,q]+x_ijq[i,j+1,q]) <= 2
 );
 
-% Définition de s_jh
-constraint forall(j in J, hb in H)(
-    s_jh[j,hb] = sum(i in I, q in Q)(a_hq[hb,q] * x_ijq[i,j,q])
-);
-
-% Définition de n_jh
-constraint forall(j in J, h in H)(
-    n_jh[j,h] <= lmd * s_jh[j,h] + z_jh[j,h]
-);
-
 % Au moins un employé présent par nuit / jour / soir chaque jour
 constraint forall(j in J)(
     sum(i in I, q in QN)(x_ijq[i,j,q]) >= 1
@@ -141,16 +136,20 @@ constraint forall(j in J)(
     sum(i in I, q in QS)(x_ijq[i,j,q]) >= 1
 );
 
-% 16h de repos entre chaque quart
-constraint forall(i in IR union IP, j in 1..horizon-1, k in 1..NB_PAIRES_INTERDITES)(
-    x_ijq[i, j, PI_q[k]]  +  x_ijq[i, j+1, PI_qp[k]] <= 1
+% Définition de s_jh
+constraint forall(j in J, hb in H)(
+    s_jh[j,hb] = sum(i in I, q in Q)(a_hq[hb,q] * x_ijq[i,j,q])
+);
+
+% Définition de n_jh
+constraint forall(j in J, h in H)(
+    n_jh[j,h] <= lmd * s_jh[j,h] + z_jh[j,h]
 );
 
 % Définition de max_z
 constraint forall(j in J, h in H)(
     max_z >= z_jh[j,h]
 );
-
 
 % Domaine z_jh
 constraint forall(j in J, h in H)(
