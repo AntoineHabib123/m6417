@@ -34,12 +34,12 @@ C =
     else {} endif
   | i in IR ]; 
 
-T_max =
+T_max = %temps de travail max par type d'employé
     [80.0 | i in IR] ++
     [80.0 | i in IP] ++
     [40.0 | i in IE];
 
-c_barre =
+c_barre = %temps de travail idéal par type d'employé
     [24 | i in IR] ++
     [20 | i in IP] ++
     [10 | i in IE];
@@ -162,3 +162,4 @@ w_preferences = 1;
 w_equilibre_jour_soir = 0;
 w_couverture = 200;
 w_heures_tot = 20;
+
